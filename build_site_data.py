@@ -14,22 +14,87 @@ import tomllib
 from pathlib import Path
 
 
-REPO = Path(__file__).parent
+REPO        = Path(__file__).parent
+FPS         = 2.0
+SETTLING_S  = 25.0   # assumed stone-settling time (TIMING_RULES.md §fixed approx)
 
 
-def extract_toml_summary(toml_path: Path) -> dict:
-    """Pull n_ends and n_throws from a detected.toml."""
+def _color_seq(first_throw: str, n: int) -> list[str]:
+    order = ["red", "yellow"] if first_throw == "drk" else ["yellow", "red"]
+    return [order[i % 2] for i in range(n)]
+
+
+def _has_thumbs(yt_id: str) -> bool:
+    return (REPO / "games" / yt_id / "thumbs").is_dir()
+
+
+def extract_toml_detail(toml_path: Path, yt_id: str) -> dict:
+    """Extract n_ends, n_throws, per-end throw list, and clock totals."""
     with open(toml_path, "rb") as f:
         data = tomllib.load(f)
-    summary_rows = data.get("game", {}).get("summary", [])
-    # summary is list-of-lists: [header, row, row, ...]
-    if len(summary_rows) > 1:
-        n_ends = len(summary_rows) - 1      # exclude header
-        n_throws = sum(row[1] for row in summary_rows[1:])   # col 1 = n_throws
-    else:
-        n_ends = 0
-        n_throws = 0
-    return {"n_ends": n_ends, "n_throws": n_throws}
+
+    summary_rows = data.get("game", {}).get("summary", [])[1:]  # skip header
+
+    n_ends   = len(summary_rows)
+    n_throws = sum(r[1] for r in summary_rows)
+
+    ends = []
+    clock = {"red": 0.0, "yellow": 0.0}   # cumulative seconds
+    thumbs_exist = _has_thumbs(yt_id)
+
+    for row in summary_rows:
+        end_num, _, camera, first_throw = row
+        end_data = data.get("end", {}).get(str(end_num), {})
+        frames   = end_data.get("throw_frames", [])
+        colors   = _color_seq(first_throw, len(frames))
+
+        throws = []
+        same_color_prev = {}   # color -> previous frame
+
+        for i, (frame, color) in enumerate(zip(frames, colors)):
+            t_sec = frame / FPS
+            yt_t  = int(frame / FPS)   # YouTube &t= param (integer seconds)
+
+            # Clock time used this throw (TIMING_RULES.md):
+            # T1 = 0; T2+ = gap_to_prev_same_color - settling, clamped ≥ 0
+            prev = same_color_prev.get(color)
+            if prev is None:
+                used_s = 0.0
+            else:
+                used_s = max(0.0, (frame - prev) / FPS - SETTLING_S)
+
+            same_color_prev[color] = frame
+            clock[color] = round(clock[color] + used_s, 1)
+
+            thumb = None
+            if thumbs_exist:
+                c = "red" if color == "red" else "yel"
+                thumb = f"games/{yt_id}/thumbs/E{end_num}T{i+1:02d}_{c}.jpg"
+
+            throws.append({
+                "n": i + 1,
+                "color": color,
+                "frame": frame,
+                "t_sec": round(t_sec, 1),
+                "yt_t": yt_t,
+                "used_s": round(used_s, 1),
+                "thumb": thumb,
+            })
+
+        ends.append({
+            "end": end_num,
+            "camera": camera,
+            "first_throw": first_throw,
+            "throws": throws,
+        })
+
+    return {
+        "n_ends":   n_ends,
+        "n_throws": n_throws,
+        "clock_red_s":    round(clock["red"],    1),
+        "clock_yellow_s": round(clock["yellow"], 1),
+        "ends": ends,
+    }
 
 
 def main():
@@ -39,7 +104,7 @@ def main():
     games = []
     for entry in index:
         yt_id = entry["youtube_id"]
-        game = dict(entry)
+        game  = dict(entry)
 
         meta_path = REPO / "games" / yt_id / "metadata.json"
         toml_path = REPO / "games" / yt_id / "detected.toml"
@@ -47,11 +112,10 @@ def main():
         if meta_path.exists():
             with open(meta_path) as f:
                 meta = json.load(f)
-            # metadata.json wins over index.json for any overlapping fields
             game.update({k: v for k, v in meta.items() if k not in ("status",)})
 
         if toml_path.exists():
-            game.update(extract_toml_summary(toml_path))
+            game.update(extract_toml_detail(toml_path, yt_id))
             game["status"] = "done"
         else:
             game.setdefault("n_ends", None)
@@ -65,7 +129,8 @@ def main():
         json.dump(games, f, separators=(",", ":"))
 
     done = sum(1 for g in games if g["status"] == "done")
-    print(f"Wrote {len(games)} games ({done} analyzed) → {out}")
+    size_kb = out.stat().st_size // 1024
+    print(f"Wrote {len(games)} games ({done} analyzed), {size_kb} KB → {out}")
 
 
 if __name__ == "__main__":
