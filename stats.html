@@ -81,7 +81,7 @@
       padding: 1.25rem;
     }
     .chart-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
-    .chart-card canvas { max-height: 300px; }
+    .chart-card canvas { display: block; width: 100% !important; max-height: 300px; }
 
     .skip-card {
       background: #fff; border-radius: 8px;
@@ -89,7 +89,7 @@
       margin-bottom: 1.5rem;
     }
     .skip-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
-    .skip-card canvas { max-height: 420px; }
+    .skip-card canvas { display: block; width: 100% !important; }
 
     .note {
       font-size: 0.78rem; color: #888; margin-top: 1.5rem;
@@ -134,7 +134,7 @@
   <h2>Time by Position — All Teams</h2>
   <div class="chart-card" style="margin-bottom:1.5rem">
     <h3>Median seconds per throw by position (Lead · Second · Vice · Skip)</h3>
-    <canvas id="chartPositions" style="max-height:380px"></canvas>
+    <canvas id="chartPositions"></canvas>
   </div>
 
   <!-- ── Team table ─────────────────────────────────────── -->
@@ -254,6 +254,7 @@ function buildSkipChart(teams) {
   const colors = skips.map(v => v > 70 ? RED_C + "cc" : v > 55 ? ORG + "cc" : GRN + "cc");
 
   const ctx = document.getElementById("chartSkip");
+  ctx.height = sorted.length * 26 + 40;
   new Chart(ctx, {
     type: "bar",
     data: {
@@ -261,6 +262,7 @@ function buildSkipChart(teams) {
       datasets: [{ label: "Skip median s/throw", data: skips, backgroundColor: colors }]
     },
     options: {
+      maintainAspectRatio: false,
       indexAxis: "y",
       plugins: { legend: { display: false } },
       scales: {
@@ -277,6 +279,7 @@ function buildPositionChart(teams) {
   const labels = sorted.map(t => t.team.split(",")[0]);
 
   const ctx = document.getElementById("chartPositions");
+  ctx.height = sorted.length * 26 + 40;
   new Chart(ctx, {
     type: "bar",
     data: {
@@ -289,6 +292,7 @@ function buildPositionChart(teams) {
       }))
     },
     options: {
+      maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" } },
       scales: {
         x: { stacked: true },
