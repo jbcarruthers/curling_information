@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broomstones Curling — Game Database</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    header h1 span { color: #7ecfff; }
+    .header-sub { font-size: 0.8rem; color: #aac; margin-top: 0.2rem; }
+
+    .stats-pills {
+      display: flex;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+    .stat-pill {
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .stat-pill strong { display: block; font-size: 1.1rem; color: #7ecfff; }
+
+    /* ── Controls ────────────────────────────────────── */
+    .controls {
+      background: #fff;
+      border-bottom: 1px solid #e0e4ea;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-group { display: flex; gap: 0.4rem; }
+    .filter-btn {
+      border: 1px solid #cdd5e0;
+      background: #fff;
+      border-radius: 6px;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: #555;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: #7ecfff; color: #1a1a2e; }
+    .filter-btn.active {
+      background: #1a1a2e;
+      color: #fff;
+      border-color: #1a1a2e;
+    }
+
+    .search-box {
+      margin-left: auto;
+      position: relative;
+    }
+    .search-box input {
+      border: 1px solid #cdd5e0;
+      border-radius: 6px;
+      padding: 0.35rem 0.8rem 0.35rem 2rem;
+      font-size: 0.82rem;
+      width: 200px;
+      outline: none;
+    }
+    .search-box input:focus { border-color: #7ecfff; }
+    .search-box::before {
+      content: "⌕";
+      position: absolute;
+      left: 0.55rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font-size: 1rem;
+      pointer-events: none;
+    }
+
+    /* ── Table ───────────────────────────────────────── */
+    .table-wrap {
+      padding: 1.5rem 2rem;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      font-size: 0.85rem;
+    }
+
+    thead th {
+      background: #f0f3f7;
+      padding: 0.7rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #5a6072;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { background: #e4e9f0; }
+    thead th.sorted-asc::after  { content: " ↑"; color: #7ecfff; }
+    thead th.sorted-desc::after { content: " ↓"; color: #7ecfff; }
+
+    tbody tr {
+      border-top: 1px solid #f0f3f7;
+      transition: background 0.1s;
+    }
+    tbody tr:hover { background: #f7f9fc; }
+
+    td { padding: 0.65rem 1rem; vertical-align: middle; }
+
+    .date-cell { white-space: nowrap; color: #555; font-size: 0.8rem; }
+    .date-cell .date { font-weight: 600; color: #1a1a2e; }
+
+    .sheet-badge {
+      display: inline-block;
+      width: 1.6rem;
+      height: 1.6rem;
+      line-height: 1.6rem;
+      text-align: center;
+      border-radius: 50%;
+      background: #e8edf4;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #3a4a6b;
+    }
+
+    .league-badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .league-presidents { background: #e8f0fe; color: #2563eb; }
+    .league-derby      { background: #fef3e8; color: #d97706; }
+
+    .matchup { font-weight: 500; }
+    .matchup .vs { color: #aaa; font-size: 0.78rem; margin: 0 0.3rem; }
+    .division-line { font-size: 0.75rem; color: #888; margin-top: 0.15rem; }
+
+    .throws-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    .throws-cell .n { font-weight: 600; }
+    .throws-cell .ends { font-size: 0.75rem; color: #888; }
+
+    .status-done {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #16a34a;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .status-done::before { content: "●"; font-size: 0.6rem; }
+    .status-pending {
+      color: #aaa;
+      font-size: 0.78rem;
+    }
+
+    .yt-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #c00;
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .yt-link:hover { border-color: #c00; background: #fff5f5; }
+    .yt-link svg { flex-shrink: 0; }
+
+    .no-results {
+      text-align: center;
+      padding: 3rem;
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.75rem;
+      color: #aaa;
+    }
+    footer a { color: #7ecfff; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Broomstones <span>Curling Club</span></h1>
+    <div class="header-sub">Game timing database — 2025–2026 season</div>
+  </div>
+  <div class="stats-pills">
+    <div class="stat-pill" id="stat-analyzed"><strong>—</strong>analyzed</div>
+    <div class="stat-pill" id="stat-total"><strong>—</strong>total games</div>
+    <div class="stat-pill" id="stat-throws"><strong>—</strong>throws tracked</div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="filter-group" id="league-filter">
+    <button class="filter-btn active" data-league="">All leagues</button>
+    <button class="filter-btn" data-league="Presidents">Presidents</button>
+    <button class="filter-btn" data-league="Derby">Derby</button>
+  </div>
+  <div class="filter-group" id="status-filter">
+    <button class="filter-btn active" data-status="">All games</button>
+    <button class="filter-btn" data-status="done">Analyzed</button>
+    <button class="filter-btn" data-status="pending">Pending</button>
+  </div>
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search player…" autocomplete="off">
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table id="games-table">
+    <thead>
+      <tr>
+        <th data-col="date">Date</th>
+        <th data-col="sheet">Sheet</th>
+        <th data-col="league">League</th>
+        <th data-col="matchup">Match-up</th>
+        <th data-col="throws" style="text-align:right">Throws / Ends</th>
+        <th data-col="status">Status</th>
+        <th>Video</th>
+      </tr>
+    </thead>
+    <tbody id="games-body">
+      <tr><td colspan="7" class="no-results">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  Data: <a href="https://github.com/jbcarruthers/curling_information" target="_blank">jbcarruthers/curling_information</a>
+  &nbsp;·&nbsp;
+  Analysis: <a href="https://www.broomstones.com" target="_blank">Broomstones Curling Club</a>
+</footer>
+
+<script>
+// ── YouTube SVG icon ─────────────────────────────────────────────────────────
+const YT_ICON = `<svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor">
+  <path d="M13.73 1.56A1.76 1.76 0 0 0 12.49.31C11.39 0 7 0 7 0S2.61 0 1.51.31A1.76 1.76 0 0 0 .27 1.56 18.5 18.5 0 0 0 0 5a18.5 18.5 0 0 0 .27 3.44 1.76 1.76 0 0 0 1.24 1.25C2.61 10 7 10 7 10s4.39 0 5.49-.31a1.76 1.76 0 0 0 1.24-1.25A18.5 18.5 0 0 0 14 5a18.5 18.5 0 0 0-.27-3.44zM5.6 7.14V2.86L9.27 5 5.6 7.14z"/>
+</svg>`;
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allGames = [];
+let sortCol = "date";
+let sortDir = 1;        // 1 = asc, -1 = desc
+let filterLeague = "";
+let filterStatus = "";
+let filterSearch = "";
+
+// ── Fetch data ────────────────────────────────────────────────────────────────
+fetch("games_data.json")
+  .then(r => r.json())
+  .then(data => {
+    allGames = data;
+    updateStats();
+    render();
+  });
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const done   = allGames.filter(g => g.status === "done");
+  const throws = done.reduce((s, g) => s + (g.n_throws || 0), 0);
+  document.getElementById("stat-analyzed").querySelector("strong").textContent = done.length;
+  document.getElementById("stat-total").querySelector("strong").textContent    = allGames.length;
+  document.getElementById("stat-throws").querySelector("strong").textContent   = throws.toLocaleString();
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────────────
+function filtered() {
+  return allGames.filter(g => {
+    if (filterLeague && g.league !== filterLeague)    return false;
+    if (filterStatus && g.status !== filterStatus)    return false;
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase();
+      if (!(g.team1 || "").toLowerCase().includes(q) &&
+          !(g.team2 || "").toLowerCase().includes(q) &&
+          !(g.division || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+// ── Sorting ───────────────────────────────────────────────────────────────────
+function sortKey(g, col) {
+  switch (col) {
+    case "date":   return g.date + (g.time || "") + (g.sheet || "");
+    case "sheet":  return parseInt(g.sheet) || 0;
+    case "league": return (g.league || "") + (g.division || "");
+    case "matchup":return g.team1 || "";
+    case "throws": return g.n_throws || -1;
+    case "status": return g.status || "";
+    default:       return "";
+  }
+}
+
+function sorted(rows) {
+  return [...rows].sort((a, b) => {
+    const ka = sortKey(a, sortCol), kb = sortKey(b, sortCol);
+    if (ka < kb) return -sortDir;
+    if (ka > kb) return  sortDir;
+    return 0;
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const rows = sorted(filtered());
+  const tbody = document.getElementById("games-body");
+
+  // Update sort indicators
+  document.querySelectorAll("thead th[data-col]").forEach(th => {
+    th.classList.remove("sorted-asc", "sorted-desc");
+    if (th.dataset.col === sortCol)
+      th.classList.add(sortDir === 1 ? "sorted-asc" : "sorted-desc");
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="no-results">No games match your filters.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(g => {
+    const dateStr = g.date ? g.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$2/$3/$1") : "—";
+    const timeStr = g.time || "";
+
+    const leagueClass = g.league === "Presidents" ? "league-presidents" : "league-derby";
+
+    const throwsCell = g.status === "done"
+      ? `<div class="n">${g.n_throws}</div><div class="ends">${g.n_ends} end${g.n_ends !== 1 ? "s" : ""}</div>`
+      : `<div class="n" style="color:#ccc">—</div>`;
+
+    const statusCell = g.status === "done"
+      ? `<span class="status-done">Analyzed</span>`
+      : `<span class="status-pending">Pending</span>`;
+
+    const ytCell = `<a class="yt-link" href="https://www.youtube.com/watch?v=${g.youtube_id}" target="_blank" rel="noopener">${YT_ICON} Watch</a>`;
+
+    return `<tr>
+      <td class="date-cell"><div class="date">${dateStr}</div>${timeStr}</td>
+      <td><span class="sheet-badge">${g.sheet || "?"}</span></td>
+      <td><span class="league-badge ${leagueClass}">${g.league || "—"}</span></td>
+      <td>
+        <div class="matchup">${esc(g.team1 || "TBD")} <span class="vs">vs</span> ${esc(g.team2 || "TBD")}</div>
+        <div class="division-line">${esc(g.division || "")}${g.round ? " · " + esc(g.round) : ""}</div>
+      </td>
+      <td class="throws-cell">${throwsCell}</td>
+      <td>${statusCell}</td>
+      <td>${ytCell}</td>
+    </tr>`;
+  }).join("");
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+document.getElementById("league-filter").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  document.querySelectorAll("#league-filter .filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  filterLeague = btn.dataset.league;
+  render();
+});
+
+document.getElementById("status-filter").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  document.querySelectorAll("#status-filter .filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  filterStatus = btn.dataset.status;
+  render();
+});
+
+document.getElementById("search").addEventListener("input", e => {
+  filterSearch = e.target.value.trim();
+  render();
+});
+
+document.querySelector("thead").addEventListener("click", e => {
+  const th = e.target.closest("th[data-col]");
+  if (!th) return;
+  if (th.dataset.col === sortCol) {
+    sortDir *= -1;
+  } else {
+    sortCol = th.dataset.col;
+    sortDir = th.dataset.col === "date" ? 1 : 1;
+  }
+  render();
+});
+</script>
+</body>
+</html>
