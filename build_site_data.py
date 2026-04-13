@@ -49,21 +49,21 @@ def extract_toml_detail(toml_path: Path, yt_id: str) -> dict:
         colors   = _color_seq(first_throw, len(frames))
 
         throws = []
-        same_color_prev = {}   # color -> previous frame
 
         for i, (frame, color) in enumerate(zip(frames, colors)):
             t_sec = frame / FPS
             yt_t  = int(frame / FPS)   # YouTube &t= param (integer seconds)
 
             # Clock time used this throw (TIMING_RULES.md):
-            # T1 = 0; T2+ = gap_to_prev_same_color - settling, clamped ≥ 0
-            prev = same_color_prev.get(color)
-            if prev is None:
+            # T1 always = 0 (clock never starts before first throw of end)
+            # T2-T16: clock ran from settling of previous throw until this release
+            #   used = (this_frame - prev_frame) / FPS - SETTLING_S, clamped >= 0
+            # Inter-end gaps are excluded because we reset per end.
+            if i == 0:
                 used_s = 0.0
             else:
-                used_s = max(0.0, (frame - prev) / FPS - SETTLING_S)
+                used_s = max(0.0, (frame - frames[i - 1]) / FPS - SETTLING_S)
 
-            same_color_prev[color] = frame
             clock[color] = round(clock[color] + used_s, 1)
 
             thumb = None
