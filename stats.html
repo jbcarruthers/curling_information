@@ -89,7 +89,7 @@
       margin-bottom: 1.5rem;
     }
     .skip-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
-    .skip-card canvas { display: block; width: 100% !important; }
+    .skip-card canvas { display: block; }
 
     .note {
       font-size: 0.78rem; color: #888; margin-top: 1.5rem;
@@ -127,14 +127,14 @@
   <h2>Skip Times by Team</h2>
   <div class="skip-card">
     <h3>Median seconds per skip throw (positions 7 &amp; 8 of each team's 8 throws)</h3>
-    <canvas id="chartSkip"></canvas>
+    <div id="wrapSkip" style="position:relative"><canvas id="chartSkip"></canvas></div>
   </div>
 
   <!-- ── Position breakdown ────────────────────────────── -->
   <h2>Time by Position — All Teams</h2>
   <div class="chart-card" style="margin-bottom:1.5rem">
     <h3>Median seconds per throw by position (Lead · Second · Vice · Skip)</h3>
-    <canvas id="chartPositions"></canvas>
+    <div id="wrapPositions" style="position:relative"><canvas id="chartPositions"></canvas></div>
   </div>
 
   <!-- ── Team table ─────────────────────────────────────── -->
@@ -254,7 +254,7 @@ function buildSkipChart(teams) {
   const colors = skips.map(v => v > 70 ? RED_C + "cc" : v > 55 ? ORG + "cc" : GRN + "cc");
 
   const ctx = document.getElementById("chartSkip");
-  ctx.height = sorted.length * 26 + 40;
+  document.getElementById("wrapSkip").style.height = (sorted.length * 26 + 40) + "px";
   new Chart(ctx, {
     type: "bar",
     data: {
@@ -279,7 +279,7 @@ function buildPositionChart(teams) {
   const labels = sorted.map(t => t.team.split(",")[0]);
 
   const ctx = document.getElementById("chartPositions");
-  ctx.height = sorted.length * 26 + 40;
+  document.getElementById("wrapPositions").style.height = (sorted.length * 26 + 40) + "px";
   new Chart(ctx, {
     type: "bar",
     data: {
