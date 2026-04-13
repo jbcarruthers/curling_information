@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Broomstones Curling — Timing Stats</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; }
+    header h1 span { color: #7ecfff; }
+    .header-sub { font-size: 0.8rem; color: #aac; margin-top: 0.2rem; }
+    .nav-link {
+      color: #7ecfff; text-decoration: none; font-size: 0.85rem;
+      border: 1px solid #7ecfff44; border-radius: 6px; padding: 0.35rem 0.8rem;
+    }
+    .nav-link:hover { background: #7ecfff22; }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    h2 {
+      font-size: 1.1rem; font-weight: 600; color: #1a1a2e;
+      margin: 2rem 0 1rem; padding-bottom: 0.4rem;
+      border-bottom: 2px solid #7ecfff;
+    }
+
+    /* ── Team table ─────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 4px #0001; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+    thead th {
+      background: #1a1a2e; color: #fff; padding: 0.6rem 0.9rem;
+      text-align: right; white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    thead th:first-child { text-align: left; }
+    thead th:hover { background: #2a2a4e; }
+    thead th.sorted-asc::after  { content: " ↑"; color: #7ecfff; }
+    thead th.sorted-desc::after { content: " ↓"; color: #7ecfff; }
+    tbody tr:nth-child(even) { background: #f8f9fc; }
+    tbody tr:hover { background: #eef4ff; }
+    td { padding: 0.55rem 0.9rem; text-align: right; border-bottom: 1px solid #eee; }
+    td:first-child { text-align: left; font-weight: 500; }
+
+    .bar-cell { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
+    .mini-bar {
+      height: 10px; border-radius: 3px; background: #7ecfff;
+      flex-shrink: 0;
+    }
+    .pos-slow { color: #c0392b; font-weight: 600; }
+    .pos-fast { color: #27ae60; }
+
+    /* ── Charts ─────────────────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px #0001;
+      padding: 1.25rem;
+    }
+    .chart-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
+    .chart-card canvas { max-height: 300px; }
+
+    .skip-card {
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 1px 4px #0001; padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .skip-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
+    .skip-card canvas { max-height: 420px; }
+
+    .note {
+      font-size: 0.78rem; color: #888; margin-top: 1.5rem;
+      padding: 0.75rem 1rem; background: #fff; border-radius: 6px;
+      border-left: 3px solid #7ecfff;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Broomstones Curling — <span>Timing Stats</span></h1>
+    <div class="header-sub" id="hdr-sub">Loading…</div>
+  </div>
+  <a class="nav-link" href="index.html">← Game Database</a>
+</header>
+
+<div class="page">
+
+  <!-- ── End progression charts ────────────────────────── -->
+  <h2>Pace Through the Game</h2>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>By end number (from start)</h3>
+      <canvas id="chartFromStart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>By position from end of game ← more meaningful</h3>
+      <canvas id="chartFromEnd"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Skip comparison ───────────────────────────────── -->
+  <h2>Skip Times by Team</h2>
+  <div class="skip-card">
+    <h3>Median seconds per skip throw (positions 7 &amp; 8 of each team's 8 throws)</h3>
+    <canvas id="chartSkip"></canvas>
+  </div>
+
+  <!-- ── Position breakdown ────────────────────────────── -->
+  <h2>Time by Position — All Teams</h2>
+  <div class="chart-card" style="margin-bottom:1.5rem">
+    <h3>Median seconds per throw by position (Lead · Second · Vice · Skip)</h3>
+    <canvas id="chartPositions" style="max-height:380px"></canvas>
+  </div>
+
+  <!-- ── Team table ─────────────────────────────────────── -->
+  <h2>Team Timing Leaderboard</h2>
+  <div class="table-wrap">
+    <table id="team-table">
+      <thead>
+        <tr>
+          <th data-col="team" data-type="str">Team</th>
+          <th data-col="n_ends" data-type="num">Ends</th>
+          <th data-col="median_per_end" data-type="num">Median s/end</th>
+          <th data-col="mean_per_end" data-type="num">Mean s/end</th>
+          <th data-col="lead" data-type="num">Lead s/throw</th>
+          <th data-col="second" data-type="num">2nd s/throw</th>
+          <th data-col="vice" data-type="num">Vice s/throw</th>
+          <th data-col="skip" data-type="num">Skip s/throw</th>
+        </tr>
+      </thead>
+      <tbody id="team-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    Times are per-team per end, scaled to 16 throws for shortened ends.
+    Position times are median seconds per individual throw.
+    Based on <span id="note-games">—</span> games, <span id="note-ends">—</span> ends.
+    Color assignments verified by visual inspection of first throw of each game.
+  </div>
+
+</div>
+
+<script>
+const BLUE   = "#7ecfff";
+const NAVY   = "#1a1a2e";
+const RED_C  = "#e74c3c";
+const GRN    = "#2ecc71";
+const ORG    = "#e67e22";
+const PRP    = "#9b59b6";
+const POS_COLORS = { lead: GRN, second: BLUE, vice: ORG, skip: RED_C };
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60), sec = Math.round(s % 60);
+  return `${m}:${sec.toString().padStart(2,"0")}`;
+}
+
+fetch("stats_data.json")
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById("hdr-sub").textContent =
+      `${data.n_games} games · ${data.n_ends} ends · ${data.team_stats.length} teams · generated ${data.generated}`;
+    document.getElementById("note-games").textContent = data.n_games;
+    document.getElementById("note-ends").textContent = data.n_ends;
+
+    buildChartFromStart(data.end_from_start);
+    buildChartFromEnd(data.end_from_finish);
+    buildSkipChart(data.team_stats);
+    buildPositionChart(data.team_stats);
+    buildTable(data.team_stats);
+  });
+
+// ── End progression: from start ──────────────────────────
+function buildChartFromStart(rows) {
+  const ctx = document.getElementById("chartFromStart");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [
+        { label: "Median", data: rows.map(r => r.median), backgroundColor: BLUE + "cc" },
+        { label: "Mean",   data: rows.map(r => r.mean),   backgroundColor: ORG  + "88",
+          type: "line", borderColor: ORG, borderWidth: 2, pointRadius: 3, tension: 0.3 },
+      ]
+    },
+    options: {
+      plugins: { legend: { position: "bottom" } },
+      scales: {
+        y: {
+          title: { display: true, text: "seconds / team" },
+          ticks: { callback: v => fmtTime(v) }
+        }
+      }
+    }
+  });
+}
+
+// ── End progression: from finish ─────────────────────────
+function buildChartFromEnd(rows) {
+  const ctx = document.getElementById("chartFromEnd");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.label),
+      datasets: [
+        { label: "Median", data: rows.map(r => r.median), backgroundColor: BLUE + "cc" },
+        { label: "Mean",   data: rows.map(r => r.mean),   backgroundColor: ORG  + "88",
+          type: "line", borderColor: ORG, borderWidth: 2, pointRadius: 3, tension: 0.3 },
+      ]
+    },
+    options: {
+      plugins: { legend: { position: "bottom" } },
+      scales: {
+        y: {
+          title: { display: true, text: "seconds / team" },
+          ticks: { callback: v => fmtTime(v) }
+        }
+      }
+    }
+  });
+}
+
+// ── Skip chart ───────────────────────────────────────────
+function buildSkipChart(teams) {
+  const sorted = [...teams].sort((a,b) =>
+    (b.positions.skip?.median ?? 0) - (a.positions.skip?.median ?? 0));
+  const labels = sorted.map(t => t.team.split(",")[0]);
+  const skips  = sorted.map(t => t.positions.skip?.median ?? 0);
+  const colors = skips.map(v => v > 70 ? RED_C + "cc" : v > 55 ? ORG + "cc" : GRN + "cc");
+
+  const ctx = document.getElementById("chartSkip");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Skip median s/throw", data: skips, backgroundColor: colors }]
+    },
+    options: {
+      indexAxis: "y",
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: "seconds per throw" } }
+      }
+    }
+  });
+}
+
+// ── Position breakdown chart ─────────────────────────────
+function buildPositionChart(teams) {
+  const sorted = [...teams].sort((a,b) =>
+    (b.positions.skip?.median ?? 0) - (a.positions.skip?.median ?? 0));
+  const labels = sorted.map(t => t.team.split(",")[0]);
+
+  const ctx = document.getElementById("chartPositions");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: ["lead","second","vice","skip"].map(pos => ({
+        label: pos.charAt(0).toUpperCase() + pos.slice(1),
+        data: sorted.map(t => t.positions[pos]?.median ?? 0),
+        backgroundColor: POS_COLORS[pos] + "cc",
+        stack: "pos",
+      }))
+    },
+    options: {
+      plugins: { legend: { position: "bottom" } },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, title: { display: true, text: "seconds per throw (stacked)" } }
+      }
+    }
+  });
+}
+
+// ── Team table ───────────────────────────────────────────
+let sortCol = "median_per_end", sortDir = -1;
+
+function buildTable(teams) {
+  renderTable(teams);
+  document.querySelectorAll("#team-table thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const col = th.dataset.col;
+      sortDir = (col === sortCol) ? -sortDir : -1;
+      sortCol = col;
+      document.querySelectorAll("thead th").forEach(h => h.classList.remove("sorted-asc","sorted-desc"));
+      th.classList.add(sortDir === -1 ? "sorted-desc" : "sorted-asc");
+      renderTable(teams);
+    });
+  });
+  // Set initial sort indicator
+  document.querySelector(`thead th[data-col="median_per_end"]`).classList.add("sorted-desc");
+}
+
+function renderTable(teams) {
+  const sorted = [...teams].sort((a, b) => {
+    let av, bv;
+    if (sortCol === "team")   { av = a.team; bv = b.team; return sortDir * av.localeCompare(bv); }
+    if (sortCol === "n_ends") { av = a.n_ends; bv = b.n_ends; }
+    else if (sortCol === "median_per_end") { av = a.median_per_end; bv = b.median_per_end; }
+    else if (sortCol === "mean_per_end")   { av = a.mean_per_end;   bv = b.mean_per_end; }
+    else { av = a.positions[sortCol]?.median ?? 0; bv = b.positions[sortCol]?.median ?? 0; }
+    return sortDir * (bv - av);
+  });
+
+  const maxMed = Math.max(...teams.map(t => t.median_per_end));
+  const maxSkip = Math.max(...teams.map(t => t.positions.skip?.median ?? 0));
+
+  const tbody = document.getElementById("team-tbody");
+  tbody.innerHTML = sorted.map(t => {
+    const barW = Math.round((t.median_per_end / maxMed) * 80);
+    const pos = t.positions;
+
+    function posCell(p) {
+      const v = pos[p]?.median;
+      if (v == null) return "<td>—</td>";
+      const isMax = (v === Math.max(...teams.map(t => t.positions[p]?.median ?? 0)));
+      const isMin = (v === Math.min(...teams.map(t => t.positions[p]?.median ?? 0)));
+      const cls = isMax ? "pos-slow" : isMin ? "pos-fast" : "";
+      return `<td class="${cls}">${v.toFixed(0)}s</td>`;
+    }
+
+    return `<tr>
+      <td>${t.team}</td>
+      <td>${t.n_ends}</td>
+      <td>
+        <div class="bar-cell">
+          ${fmtTime(t.median_per_end)}
+          <div class="mini-bar" style="width:${barW}px"></div>
+        </div>
+      </td>
+      <td>${fmtTime(t.mean_per_end)}</td>
+      ${posCell("lead")}
+      ${posCell("second")}
+      ${posCell("vice")}
+      ${posCell("skip")}
+    </tr>`;
+  }).join("");
+}
+</script>
+</body>
+</html>
