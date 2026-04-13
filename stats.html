@@ -133,7 +133,7 @@
   <!-- ── Position breakdown ────────────────────────────── -->
   <h2>Time by Position — All Teams</h2>
   <div class="chart-card" style="margin-bottom:1.5rem">
-    <h3>Median seconds per throw by position (Lead · Second · Vice · Skip)</h3>
+    <h3>Seconds used per end by position — each segment = 2 × median throw time (hover for per-throw value)</h3>
     <div id="wrapPositions" style="position:relative"><canvas id="chartPositions"></canvas></div>
   </div>
 
@@ -286,17 +286,32 @@ function buildPositionChart(teams) {
       labels,
       datasets: ["lead","second","vice","skip"].map(pos => ({
         label: pos.charAt(0).toUpperCase() + pos.slice(1),
-        data: sorted.map(t => t.positions[pos]?.median ?? 0),
+        data: sorted.map(t => {
+          const med = t.positions[pos]?.median ?? 0;
+          return { x: med * 2, perThrow: med };
+        }),
         backgroundColor: POS_COLORS[pos] + "cc",
         stack: "pos",
       }))
     },
     options: {
       maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" } },
+      parsing: { xAxisKey: "x", yAxisKey: "y" },
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pt = ctx.raw.perThrow;
+              return ` ${ctx.dataset.label}: ${pt.toFixed(0)}s/throw`;
+            }
+          }
+        }
+      },
       scales: {
-        x: { stacked: true },
-        y: { stacked: true, title: { display: true, text: "seconds per throw (stacked)" } }
+        x: { stacked: true, title: { display: true, text: "seconds per end (2 throws per position)" },
+             ticks: { callback: v => fmtTime(v) } },
+        y: { stacked: true }
       }
     }
   });
