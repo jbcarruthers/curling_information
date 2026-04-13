@@ -274,8 +274,8 @@ function buildSkipChart(teams) {
 
 // ── Position breakdown chart ─────────────────────────────
 function buildPositionChart(teams) {
-  const sorted = [...teams].sort((a,b) =>
-    (b.positions.skip?.median ?? 0) - (a.positions.skip?.median ?? 0));
+  const posTotal = t => ["lead","second","vice","skip"].reduce((s,p) => s + (t.positions[p]?.median ?? 0), 0);
+  const sorted = [...teams].sort((a,b) => posTotal(b) - posTotal(a));
   const labels = sorted.map(t => t.team.split(",")[0]);
 
   const ctx = document.getElementById("chartPositions");
