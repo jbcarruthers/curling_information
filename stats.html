@@ -284,34 +284,35 @@ function buildPositionChart(teams) {
     type: "bar",
     data: {
       labels,
-      datasets: ["lead","second","vice","skip"].map(pos => ({
-        label: pos.charAt(0).toUpperCase() + pos.slice(1),
-        data: sorted.map(t => {
-          const med = t.positions[pos]?.median ?? 0;
-          return { x: med * 2, perThrow: med };
-        }),
-        backgroundColor: POS_COLORS[pos] + "cc",
-        stack: "pos",
-      }))
+      datasets: ["lead","second","vice","skip"].map(pos => {
+        const perThrow = sorted.map(t => t.positions[pos]?.median ?? 0);
+        return {
+          label: pos.charAt(0).toUpperCase() + pos.slice(1),
+          data: perThrow.map(v => v * 2),
+          backgroundColor: POS_COLORS[pos] + "cc",
+          stack: "pos",
+          perThrow,
+        };
+      })
     },
     options: {
       maintainAspectRatio: false,
-      parsing: { xAxisKey: "x", yAxisKey: "y" },
       plugins: {
         legend: { position: "bottom" },
         tooltip: {
           callbacks: {
             label: ctx => {
-              const pt = ctx.raw.perThrow;
+              const pt = ctx.dataset.perThrow[ctx.dataIndex];
               return ` ${ctx.dataset.label}: ${pt.toFixed(0)}s/throw`;
             }
           }
         }
       },
       scales: {
-        x: { stacked: true, title: { display: true, text: "seconds per end (2 throws per position)" },
-             ticks: { callback: v => fmtTime(v) } },
-        y: { stacked: true }
+        x: { stacked: true },
+        y: { stacked: true,
+             title: { display: true, text: "seconds per end (2 throws per position)" },
+             ticks: { callback: v => fmtTime(v) } }
       }
     }
   });
